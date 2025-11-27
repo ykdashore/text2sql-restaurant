@@ -1,0 +1,45 @@
+# ----------------------------
+# Python
+# ----------------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+.env
+venv/
+env/
+.venv/
+
+# ----------------------------
+# FastAPI / Uvicorn
+# ----------------------------
+*.log
+
+# ----------------------------
+# Docker
+# ----------------------------
+# Avoid committing volumes or intermediate layers
+**/data/
+**/tmp/
+docker-data/
+*.pid
+
+# ----------------------------
+# OS / Editor files
+# ----------------------------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+
+
+# ----------------------------
+# OneDrive conflict files
+# ----------------------------
+*.lnk
+*.tmp
+~$*

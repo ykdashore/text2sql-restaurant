@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+psycopg2-binary
+pydantic
+sqlparse
+requests
+gunicorn
+pytest
+python-dotenv
