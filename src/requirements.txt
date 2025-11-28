@@ -7,3 +7,7 @@ requests
 gunicorn
 pytest
 python-dotenv
+langchain-google-genai
+pytest
+pytest-asyncio
+httpx
