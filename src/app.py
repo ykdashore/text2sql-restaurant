@@ -1,10 +1,11 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException,  Depends
 from pydantic import BaseModel
 import os
 from executor import SafeExecutor, SchemaLoader
 from prompt_templates import FEW_SHOT
 from llm_loader import LLMLoader
 import logging
+from auth import verify_api_key
 
 
 logging.basicConfig(
@@ -30,7 +31,7 @@ class QueryRequest(BaseModel):
 
 
 @app.post("/query")
-async def query(request: QueryRequest):
+async def query(request: QueryRequest, api_key: str = Depends(verify_api_key)):
     nl_query = request.user_query
     logger.info(f"Received NL query: {nl_query}")
     llm = llm_loader.get_model()
@@ -38,8 +39,7 @@ async def query(request: QueryRequest):
     response = llm.invoke(prompt_with_query)
     sql = response.content.strip()
     if sql.startswith("```sql"):
-            sql = sql.replace("```sql", "").replace("```", "").strip()
-    # sql = "SELECT 1 as demo"  
+        sql = sql.replace("```sql", "").replace("```", "").strip()
 
     try:
         logger.info("Validating generated SQL")
@@ -58,7 +58,7 @@ async def query(request: QueryRequest):
     except Exception as e:
         logger.exception("Unhandled error during /query processing")
         raise HTTPException(status_code=500, detail="Internal server error")
-    
+
 
 @app.get("/health")
 def health():
