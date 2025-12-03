@@ -28,8 +28,9 @@ services:
     environment:
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       DATABASE_URL: "postgresql://postgres:postgres@db:5432/restaurantdb"
+      API_KEYS: ${API_KEYS}  # Add your production API keys
     volumes:
-      - ./src:/src         # Hot reload source
+      - ./src:/src
     ports:
       - "8010:8010"
     command: uvicorn app:app --host 0.0.0.0 --port 8010 --reload
@@ -42,6 +43,7 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: "postgresql://postgres:postgres@db:5432/restaurantdb"
+      API_KEYS: "test-key-12345,test-key-67890"  # Test-specific keys
     volumes:
       - ./src:/src
     command: pytest -q
