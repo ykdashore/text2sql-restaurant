@@ -33,7 +33,9 @@ class SafeExecutor:
         forbidden = ["insert ", "update ", "delete ", "drop ", "truncate ", "alter ", ";"]
 
         for token in forbidden:
+            
             if token in lowered and not lowered.strip().startswith("select"):
+                logger.info(f"{token}")
                 logger.warning(f"Validation failed: forbidden token '{token}'")
                 return False, f"Forbidden token {token}"
 
@@ -49,7 +51,8 @@ class SafeExecutor:
             timeout_ms = int(timeout_seconds * 1000)
             cur.execute(f"SET statement_timeout = {timeout_ms};")
             sql = sql.replace(";",'')
-            cur.execute(f"{sql} LIMIT {row_limit};")
+            # logger.info(f"*-*-**{sql}")
+            cur.execute(f"{sql} LIMIT {row_limit};" if "limit" not in sql.lower() else sql)
             rows = cur.fetchall()
             latency = time.time() - start
             logger.info(f"Query executed successfully in {latency:.4f}s")

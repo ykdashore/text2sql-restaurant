@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text2SQL Restaurant Assistant</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Highlight.js for SQL Syntax Highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/sql.min.js"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .message-enter {
+            animation: slideIn 0.3s ease-out forwards;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .typing-dot {
+            animation: typing 1.4s infinite ease-in-out both;
+        }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-6 shadow-sm z-10">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200">
+                <i data-lucide="database" class="text-white w-6 h-6"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg text-slate-800 tracking-tight">Restaurant SQL Assistant</h1>
+                <div class="flex items-center gap-2 text-xs text-slate-500">
+                    <span id="status-indicator" class="w-2 h-2 rounded-full bg-slate-300"></span>
+                    <span id="status-text">Disconnected</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-3">
+            <button onclick="fetchSchema()" class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                <i data-lucide="table-2" class="w-4 h-4"></i>
+                View Schema
+            </button>
+            <button onclick="toggleSettings()" class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                <i data-lucide="settings" class="w-5 h-5"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex overflow-hidden">
+        
+        <!-- Chat Container -->
+        <div class="flex-1 flex flex-col max-w-5xl mx-auto w-full bg-white shadow-xl shadow-slate-200/50 my-4 rounded-2xl border border-slate-100 overflow-hidden relative">
+            
+            <!-- Messages Area -->
+            <div id="chat-container" class="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth">
+                
+                <!-- Welcome Message -->
+                <div class="flex gap-4 max-w-3xl">
+                    <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0 mt-1">
+                        <i data-lucide="bot" class="w-5 h-5 text-indigo-600"></i>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="bg-slate-100 p-4 rounded-2xl rounded-tl-none text-slate-700 text-sm leading-relaxed">
+                            Hello! I can query the restaurant database for you. Try asking questions like:
+                            <ul class="list-disc list-inside mt-2 space-y-1 text-slate-600">
+                                <li>"What are total sales by restaurant this month??"</li>
+                                <li>"Show all orders that used discount code 'NEW20'."</li>
+                                <li>"What is the average price of items in the menu?"</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Input Area -->
+            <div class="p-4 border-t border-slate-100 bg-white">
+                <form id="chat-form" class="relative flex items-end gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200 focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
+                    <textarea 
+                        id="user-input" 
+                        rows="1" 
+                        placeholder="Ask a question about the data..." 
+                        class="w-full bg-transparent border-none focus:ring-0 p-2 text-slate-700 resize-none max-h-32 placeholder:text-slate-400"
+                        oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"
+                        onkeydown="handleEnter(event)"
+                    ></textarea>
+                    <button type="submit" id="send-btn" class="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i data-lucide="send-horizontal" class="w-5 h-5"></i>
+                    </button>
+                </form>
+                <div class="text-center mt-2">
+                    <p class="text-[10px] text-slate-400">AI generated SQL may be inaccurate. Verify important results.</p>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Schema Modal -->
+    <div id="schema-modal" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center z-50 backdrop-blur-sm opacity-0 transition-opacity duration-200">
+        <div class="bg-white w-full max-w-4xl h-[80vh] rounded-2xl shadow-2xl flex flex-col transform scale-95 transition-transform duration-200">
+            <div class="flex items-center justify-between p-4 border-b border-slate-100">
+                <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i data-lucide="table-2" class="w-5 h-5 text-indigo-600"></i>
+                    Database Schema
+                </h2>
+                <button onclick="toggleSchema(false)" class="p-1 hover:bg-slate-100 rounded-md transition-colors">
+                    <i data-lucide="x" class="w-5 h-5 text-slate-400"></i>
+                </button>
+            </div>
+            <div class="flex-1 overflow-auto bg-slate-50 p-4">
+                <pre id="schema-content" class="font-mono text-xs text-slate-600 whitespace-pre-wrap"></pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center z-50 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6">
+            <h2 class="text-lg font-bold text-slate-800 mb-4">Connection Settings</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">API Base URL</label>
+                    <input type="text" id="api-url" value="http://localhost:8010" class="w-full p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">API Key</label>
+                    <input type="password" id="api-key" placeholder="Enter API Key" class="w-full p-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 outline-none">
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-2">
+                <button onclick="toggleSettings()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+                <button onclick="saveSettings()" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg">Save & Connect</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- State Management ---
+        const state = {
+            baseUrl: localStorage.getItem('api_url') || 'http://localhost:8010',
+            apiKey: localStorage.getItem('api_key') || '',
+            isGenerating: false
+        };
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            document.getElementById('api-url').value = state.baseUrl;
+            document.getElementById('api-key').value = state.apiKey;
+            checkHealth();
+            
+            // Periodically check health
+            setInterval(checkHealth, 30000);
+        });
+
+        function handleEnter(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                document.getElementById('chat-form').dispatchEvent(new Event('submit'));
+            }
+        }
+
+        // --- API Interactions ---
+
+        async function checkHealth() {
+            const indicator = document.getElementById('status-indicator');
+            const text = document.getElementById('status-text');
+            
+            try {
+                const res = await fetch(`${state.baseUrl}/health`);
+                if (res.ok) {
+                    indicator.classList.remove('bg-slate-300', 'bg-red-500');
+                    indicator.classList.add('bg-emerald-500');
+                    text.textContent = "Connected";
+                    text.classList.add('text-emerald-600');
+                } else {
+                    throw new Error('Health check failed');
+                }
+            } catch (err) {
+                indicator.classList.remove('bg-emerald-500');
+                indicator.classList.add('bg-red-500');
+                text.textContent = "Offline";
+                text.classList.remove('text-emerald-600');
+                text.classList.add('text-red-500');
+            }
+        }
+
+        async function fetchSchema() {
+            const btn = document.querySelector('button[onclick="fetchSchema()"]');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<span class="animate-spin inline-block mr-2">⟳</span> Loading...`;
+            
+            try {
+                const res = await fetch(`${state.baseUrl}/schema`);
+                if (!res.ok) throw new Error('Failed to fetch schema');
+                const data = await res.json();
+                
+                document.getElementById('schema-content').textContent = data.schema;
+                toggleSchema(true);
+            } catch (err) {
+                alert("Could not load schema. Ensure backend is running and CORS is enabled.");
+                console.error(err);
+            } finally {
+                btn.innerHTML = originalText;
+                lucide.createIcons();
+            }
+        }
+
+        // --- Chat Logic ---
+
+        document.getElementById('chat-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('user-input');
+            const query = input.value.trim();
+            
+            if (!query || state.isGenerating) return;
+
+            // UI Updates
+            appendMessage('user', query);
+            input.value = '';
+            input.style.height = 'auto';
+            state.isGenerating = true;
+            toggleLoading(true);
+
+            try {
+                // Construct Headers
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'accept': 'application/json'
+                };
+                if (state.apiKey) headers['x-api-key'] = state.apiKey;
+
+                let url = `${state.baseUrl}/query`;
+                if (state.apiKey) url += `?api_key=${state.apiKey}`;
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({ user_query: query })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Query failed');
+                }
+
+                const data = await response.json();
+                appendBotResponse(data);
+
+            } catch (err) {
+                appendError(err.message);
+            } finally {
+                state.isGenerating = false;
+                toggleLoading(false);
+            }
+        });
+
+        // --- UI Rendering ---
+
+        function appendMessage(role, text) {
+            const container = document.getElementById('chat-container');
+            const isUser = role === 'user';
+            
+            const div = document.createElement('div');
+            div.className = `flex gap-4 ${isUser ? 'flex-row-reverse' : ''} message-enter`;
+            
+            const avatar = isUser 
+                ? `<div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center flex-shrink-0 mt-1"><i data-lucide="user" class="w-4 h-4 text-white"></i></div>`
+                : `<div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0 mt-1"><i data-lucide="bot" class="w-5 h-5 text-indigo-600"></i></div>`;
+
+            div.innerHTML = `
+                ${avatar}
+                <div class="space-y-2 max-w-[85%]">
+                    <div class="${isUser ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700'} p-4 rounded-2xl ${isUser ? 'rounded-tr-none' : 'rounded-tl-none'} text-sm leading-relaxed shadow-sm">
+                        ${text}
+                    </div>
+                </div>
+            `;
+            
+            container.appendChild(div);
+            lucide.createIcons();
+            scrollToBottom();
+        }
+
+       function appendBotResponse(data) {
+            const container = document.getElementById('chat-container');
+            const div = document.createElement('div');
+            div.className = `flex gap-4 message-enter`;
+            
+
+            const resultRows = data.result?.rows || [];
+
+
+            let tableHtml = '';
+            
+
+            if (resultRows.length > 0) {
+                
+                const headers = Object.keys(resultRows[0]);
+                
+                tableHtml = `
+                    <div class="overflow-x-auto rounded-lg border border-slate-200 mt-3 bg-white">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-50 border-b border-slate-200">
+                                <tr>
+                                    ${headers.map(h => `<th class="px-4 py-3 font-semibold text-slate-600 uppercase tracking-wider">${h}</th>`).join('')}
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                ${resultRows.map(row => `
+                                    <tr class="hover:bg-slate-50 transition-colors">
+                                        ${headers.map(h => `<td class="px-4 py-3 text-slate-600 whitespace-nowrap">${row[h]}</td>`).join('')}
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-2 text-[10px] text-slate-400 text-right">${resultRows.length} rows returned in ${data.result.latency.toFixed(3)}s</div>
+                `;
+            } else {
+                tableHtml = `<div class="mt-3 p-3 bg-slate-50 rounded-lg text-xs text-slate-500 italic border border-slate-100">No results found or empty set returned.</div>`;
+            }
+
+            div.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0 mt-1">
+                    <i data-lucide="bot" class="w-5 h-5 text-indigo-600"></i>
+                </div>
+                <div class="space-y-3 max-w-full w-full overflow-hidden">
+                    
+                    <!-- SQL Block -->
+                    <div class="bg-[#282c34] rounded-xl overflow-hidden shadow-md group relative">
+                        <div class="flex items-center justify-between px-4 py-2 bg-[#21252b] border-b border-[#3e4451]">
+                            <span class="text-xs text-slate-400 font-mono">Generated SQL</span>
+                            <button onclick="copyToClipboard(this)" class="text-xs text-slate-500 hover:text-white transition-colors">
+                                Copy
+                            </button>
+                        </div>
+                        <pre class="m-0"><code class="language-sql text-sm !bg-transparent !p-4">${data.sql}</code></pre>
+                    </div>
+
+                    <!-- Result Table -->
+                    ${tableHtml}
+                </div>
+            `;
+            
+            container.appendChild(div);
+            hljs.highlightAll();
+            lucide.createIcons();
+            scrollToBottom();
+        }
+
+        function appendError(msg) {
+            const container = document.getElementById('chat-container');
+            const div = document.createElement('div');
+            div.className = `flex gap-4 message-enter`;
+            div.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-1">
+                    <i data-lucide="alert-circle" class="w-5 h-5 text-red-600"></i>
+                </div>
+                <div class="bg-red-50 border border-red-100 text-red-700 p-4 rounded-2xl rounded-tl-none text-sm">
+                    <strong>Error:</strong> ${msg}
+                    <div class="mt-2 text-xs opacity-75">Check console logs or connection settings.</div>
+                </div>
+            `;
+            container.appendChild(div);
+            lucide.createIcons();
+            scrollToBottom();
+        }
+
+        function toggleLoading(show) {
+            const container = document.getElementById('chat-container');
+            const existingLoader = document.getElementById('loader-bubble');
+            const btn = document.getElementById('send-btn');
+            
+            btn.disabled = show;
+
+            if (show) {
+                const div = document.createElement('div');
+                div.id = 'loader-bubble';
+                div.className = `flex gap-4 message-enter`;
+                div.innerHTML = `
+                    <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0 mt-1">
+                        <i data-lucide="bot" class="w-5 h-5 text-indigo-600"></i>
+                    </div>
+                    <div class="bg-slate-100 p-4 rounded-2xl rounded-tl-none flex items-center gap-1 h-12">
+                        <div class="w-2 h-2 bg-slate-400 rounded-full typing-dot"></div>
+                        <div class="w-2 h-2 bg-slate-400 rounded-full typing-dot"></div>
+                        <div class="w-2 h-2 bg-slate-400 rounded-full typing-dot"></div>
+                    </div>
+                `;
+                container.appendChild(div);
+                lucide.createIcons();
+            } else if (existingLoader) {
+                existingLoader.remove();
+            }
+            scrollToBottom();
+        }
+
+        // --- Utils ---
+
+        function scrollToBottom() {
+            const container = document.getElementById('chat-container');
+            container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+        }
+
+        function copyToClipboard(btn) {
+            const code = btn.parentElement.nextElementSibling.innerText;
+            navigator.clipboard.writeText(code);
+            const originalText = btn.innerText;
+            btn.innerText = 'Copied!';
+            setTimeout(() => btn.innerText = originalText, 2000);
+        }
+
+        function toggleSettings() {
+            const modal = document.getElementById('settings-modal');
+            modal.classList.toggle('hidden');
+            modal.classList.toggle('flex');
+        }
+
+        function toggleSchema(show) {
+            const modal = document.getElementById('schema-modal');
+            const modalContent = modal.firstElementChild;
+            
+            if (show) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+
+                setTimeout(() => {
+                    modal.classList.remove('opacity-0');
+                    modalContent.classList.remove('scale-95');
+                }, 10);
+            } else {
+                modal.classList.add('opacity-0');
+                modalContent.classList.add('scale-95');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                }, 200);
+            }
+        }
+
+        function saveSettings() {
+            const url = document.getElementById('api-url').value.replace(/\/$/, ''); 
+            const key = document.getElementById('api-key').value;
+            
+            state.baseUrl = url;
+            state.apiKey = key;
+            
+            localStorage.setItem('api_url', url);
+            localStorage.setItem('api_key', key);
+            
+            toggleSettings();
+            checkHealth();
+        }
+    </script>
+</body>
+</html>
