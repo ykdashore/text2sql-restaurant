@@ -9,7 +9,7 @@ class LLMLoader:
         if self.model_provider.lower() == "google-gemini":
 
             llm = ChatGoogleGenerativeAI(
-                model="gemini-2.5-flash",
+                model="gemini-2.5-flash-preview-09-2025",
                 temperature=0,
                 max_tokens=None,
                 timeout=None,

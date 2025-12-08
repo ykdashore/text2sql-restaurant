@@ -1,6 +1,6 @@
-# Text-to-SQL Restaurant Query Engine
+# Text-to-SQL Query Engine
 
-A production-ready FastAPI service that converts natural language questions into SQL queries for a restaurant business database.  
+A production-ready FastAPI service that converts natural language questions into SQL queries.  
 It includes a safe SQL executor, schema-aware validation, Dockerized environment, and a complete test suite running through Docker Compose.
 
 ---
@@ -9,7 +9,7 @@ It includes a safe SQL executor, schema-aware validation, Dockerized environment
 
 - Convert plain English questions into SQL queries  
 - Validate SQL for safety (blocks DROP/DELETE/TRUNCATE, etc.)  
-- Execute queries against a PostgreSQL restaurant database  
+- Execute queries against a PostgreSQL database  
 - Expose a clean API using FastAPI  
 - Fully containerized (`app`, `db`, `tests`)  
 - Unit tests run inside Docker  
@@ -37,10 +37,12 @@ It includes a safe SQL executor, schema-aware validation, Dockerized environment
 
 Create a .env file:
 
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres
-POSTGRES_DB=restaurantdb
-GEMINI_API_KEY=your-key-here
+POSTGRES_USER=postgres\
+POSTGRES_PASSWORD=postgres\
+POSTGRES_DB=restaurantdb\
+GEMINI_API_KEY=your-key-here\
+API_KEYS=test-key-123,test-key-456\
+TESTING_KEY=test-key-123
 
 ---
 
